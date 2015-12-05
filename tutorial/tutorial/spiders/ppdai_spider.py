@@ -34,6 +34,7 @@ class PpaiSpider(scrapy.Spider):
         print userList
         conn=None
         try:
+            # create table blackuser (user_name varchar(100),insert_time timestamp default now())
             conn=psycopg2.connect(dbname="test", user="test", password="test", host="localhost")
             cursor = conn.cursor()
             for user in userList:
