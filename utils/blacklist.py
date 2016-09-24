@@ -1,39 +1,12 @@
-import requests
-import configparser
 import re
 import psycopg2
+import utils
 
 from lxml import html
-config = configparser.ConfigParser()
-config.read("/data/ppdai/blacklist.config")
-user_config = config["user"]
+ppdai_username,session_requests = utils.login()
 
-session_requests = requests.session()
-login_url = "https://ac.ppdai.com/User/Login?redirect="
-result = session_requests.get(login_url)
-tree = html.fromstring(result.text)
 conn = psycopg2.connect("dbname=test user=test password=test port=5434 host=127.0.0.1")
 pg_cursor = conn.cursor()
-
-ppdai_username = user_config["username"]
-
-payload = {
-	"UserName": ppdai_username,
-	"Password": user_config["password"]
-}
-
-result = session_requests.post(
-	login_url,
-	data = payload,
-	headers = dict(referer=login_url)
-)
-
-def get_pages():
-    result = session_requests.get("http://invest.ppdai.com/account/blacklist")
-    tree = html.fromstring(result.text)
-    pages_text = tree.find('.//span[@class="pagerstatus"]').text
-    pages_count = int(re.compile("\d+").findall(pages_text)[0])
-    return pages_count
 
 
 def get_delayed_bidding(url):
@@ -59,8 +32,8 @@ def get_page_url(pagecount):
     return "http://invest.ppdai.com/account/blacklist?PageIndex={}&IsCalendarRequest=0".format(pagecount)
 
 
+pages_count = utils.get_pages(session_requests,"http://invest.ppdai.com/account/blacklist")
 pg_cursor.execute("delete from ppdai_blacklist where user_name=''".format(ppdai_username))
-pages_count = get_pages()
 for x in range(pages_count):
     url = get_page_url(x+1)
     for row in get_delayed_bidding(url):
