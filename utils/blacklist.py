@@ -7,7 +7,7 @@ login_url = "https://ac.ppdai.com/User/Login?redirect="
 result = session_requests.get(login_url)
 tree = html.fromstring(result.text)
 config = configparser.ConfigParser()
-config.read("/data/ppdai/utils/blacklist.config")
+config.read("/data/ppdai/blacklist.config")
 user_config = config["user"]
 print(tree)
 payload = {
