@@ -54,13 +54,13 @@ for x in range(pages_count):
     result = pg_cursor.fetchone()
     print(result[0])
     conn.commit()
-    time.sleep(random.randint(3))
+    #time.sleep(random.randint(3))
     if result[0]==1:
         break
 
 sql_insert = """
 insert into my_biddings select * from my_biddings_stage where bidding_time >
-select max(bidding_time) from my_biddings where user_name = {}
+(select coalesce(max(bidding_time),'2000/3/31 8:42:14') from my_biddings where user_name = '{}')
 """.format(ppdai_username)
 print(sql_insert)
 pg_cursor.execute(sql_insert)
