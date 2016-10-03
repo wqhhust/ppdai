@@ -3,6 +3,8 @@ import time
 import pickle
 import requests
 import pika
+import re
+from lxml import html
 headers = {
 "User-Agent":
     "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36"
@@ -47,18 +49,108 @@ def load_cookie_to_webdriver(driver,file):
         driver.add_cookie(cookie)
 
 
+def get_bidding_list_after_loggin(session,url):
+    result = session.get(url)
+    encoding = result.encoding
+    page_text = result.text.encode(encoding)
+    tree = html.fromstring(result.text.encode(encoding))
+    bidding_elements = tree.findall('.//a[@class="title ell"]')
+    bidding_id_list = [x.attrib["href"].split("=")[1] for x in bidding_elements]
+    print(bidding_id_list)
+
+
+def get_bidding_details(session,bidding_id):
+    url = "http://www.ppdai.com/list/{}".format(bidding_id)
+    print(url)
+    result = session.get(url)
+    encoding = result.encoding
+    page_text = result.text
+    # remove some noisy elements
+    page_text = re.sub("<em>.*?</em>","",page_text)
+    tree = html.fromstring(page_text)
+    elements = tree.findall('.//div[@class="newLendDetailMoneyLeft"]/dl')
+    elements_text = [x.find("./dd").text.replace(",","") for x in elements]
+    first_table = tree.find('.//table[@class="lendDetailTab_tabContent_table1"]')
+    table_text= [re.sub("\s","",x.text) for x in first_table.findall(".//td")]
+    xueli = tree.find('.//i[@class="xueli"]')
+    xueji = tree.find('.//i[@class="xueji"]')
+    xueli_or_xueji = None
+    education_list = [None,None,None,None]
+    if xueli is not None:
+        global xueli_or_xueji
+        xueli_or_xueji = xueli
+    if xueji is not None:
+        global xueli_or_xueji
+        xueli_or_xueji = xueji
+    if xueli_or_xueji is not None:
+        education_full = xueli_or_xueji.getparent().text_content().strip()
+        education_info = re.sub(".*（|）.*", "", education_full).split("，")
+        education_info = [i.split("：")[1] for i in education_info]
+        global education_list
+        education_list = [education_full] + education_info
+    bank_credit = tree.find('.//i[@class="renbankcredit"]')
+    renbankcredit = None
+    if bank_credit is not None:
+        global renbankcredit
+        renbankcredit = bank_credit.getparent().text_content().strip()
+
+    print(elements_text)
+    print(table_text)
+    print(education_list)
+    print(renbankcredit)
+    return tree
+
+
 def test():
     # dump_cookie(file)
     # load_cookie_to_webdriver(driver,file)
     result = requests.get(ppdai_url)
     load_cookie_to_requests(s, file)
-    print(len(s.cookies))
+    #print(len(s.cookies))
     result = s.get("http://www.ppdai.com/account/lend")
     encoding = result.encoding
-    print(encoding)
-    print(result.text.encode(encoding))
-    [print(cookie) for cookie in s.cookies]
-    print(len(s.cookies))
+    #print(encoding)
+    #print(result.text.encode(encoding))
+    #[print(cookie) for cookie in s.cookies]
+    #print(len(s.cookies))
+    tree = get_bidding_details(s,21112787)
+    return tree
+
+def consume_queue():
+    def callback(ch, method, properties, body):
+        print(" [x] Received %r" % body)
+    url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
+
+    parameters = pika.URLParameters(url_params)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    queue_name = 'middle'
+
+    channel.exchange_declare(exchange='pp',
+                             type="topic",
+                             durable=True,
+                             auto_delete=False)
+
+    channel.queue_declare(queue=queue_name,
+                          durable=True,
+                          exclusive=False,
+                          auto_delete=False,
+                          arguments={"x-max-length": 100}
+                          )
+
+    channel.queue_bind(queue=queue_name,
+                       exchange='pp')
+    print(queue_name)
+
+    channel.basic_consume(callback,
+                          queue=queue_name,
+                          no_ack=False)
+    try:
+        channel.start_consuming()
+    except KeyboardInterrupt:
+        channel.stop_consuming()
+    connection.close()
+
 
 
 
