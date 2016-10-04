@@ -51,12 +51,14 @@ def load_cookie_to_webdriver(driver,file):
 
 
 def get_bidding_list_after_loggin(session,url):
+    print(url)
     result = session.get(url)
     encoding = result.encoding
     page_text = result.text.encode(encoding)
     tree = html.fromstring(result.text.encode(encoding))
     bidding_elements = tree.findall('.//a[@class="title ell"]')
-    bidding_id_list = [x.attrib["href"].split("=")[1] for x in bidding_elements]
+    bidding_id_list = [[x.attrib["href"].split("=")[1],x.attrib["title"]] for x in bidding_elements]
+    print("++++++++++++++++++")
     print(bidding_id_list)
     return bidding_id_list
 
@@ -131,29 +133,32 @@ def consume_queue():
     def callback(ch, method, properties, body):
         print(" [x] Received %r" % body)
         page = re.sub(".*:page-number|,|:timestamp.*", "", str(body)).strip()
-        url_template = "http://invest.ppdai.com/loan/listnew?LoanCategoryId=4&SortType=2&PageIndex=3&MinAmount=0&MaxAmount=0"
+        url_template = "http://invest.ppdai.com/loan/listnew?LoanCategoryId=4&SortType=2&PageIndex={}&MinAmount=0&MaxAmount=0"
         url = url_template.format(page)
         get_bidding_list_after_loggin(s, url)
         print(url)
+        time.sleep(1)
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
 
     parameters = pika.URLParameters(url_params)
     connection = pika.BlockingConnection(parameters)
     channel = connection.channel()
+    channel.basic_qos(prefetch_count=1)
     queue_name = 'middle'
 
-    channel.exchange_declare(exchange='pp',
-                             type="topic",
-                             durable=True,
-                             auto_delete=False)
-
-    channel.queue_declare(queue=queue_name,
-                          durable=True,
-                          exclusive=False,
-                          auto_delete=False,
-                          arguments={"x-max-length": 100}
-                          )
+    # channel.exchange_declare(exchange='pp',
+    #                          type="topic",
+    #                          durable=True,
+    #                          auto_delete=False)
+    #
+    # channel.queue_declare(queue=queue_name,
+    #                       durable=True,
+    #                       exclusive=False,
+    #                       auto_delete=False,
+    #                       arguments={"x-max-length": 100}
+    #                       )
 
     channel.queue_bind(queue=queue_name,
                        exchange='pp')
