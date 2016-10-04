@@ -67,6 +67,7 @@ def get_bidding_details(session,bidding_id):
     page_text = result.text
     # remove some noisy elements
     page_text = re.sub("<em>.*?</em>","",page_text)
+    #print(page_text)
     tree = html.fromstring(page_text)
     elements = tree.findall('.//div[@class="newLendDetailMoneyLeft"]/dl')
     elements_text = [x.find("./dd").text.replace(",","") for x in elements]
@@ -74,30 +75,38 @@ def get_bidding_details(session,bidding_id):
     table_text= [re.sub("\s","",x.text) for x in first_table.findall(".//td")]
     xueli = tree.find('.//i[@class="xueli"]')
     xueji = tree.find('.//i[@class="xueji"]')
-    xueli_or_xueji = None
     education_list = [None,None,None,None]
-    if xueli is not None:
-        global xueli_or_xueji
-        xueli_or_xueji = xueli
-    if xueji is not None:
-        global xueli_or_xueji
-        xueli_or_xueji = xueji
-    if xueli_or_xueji is not None:
+    xueli_or_xueji = [x for x in [xueji, xueli] if x is not None]
+    if xueli_or_xueji != []:
+        xueli_or_xueji = xueli_or_xueji[0]
         education_full = xueli_or_xueji.getparent().text_content().strip()
         education_info = re.sub(".*（|）.*", "", education_full).split("，")
         education_info = [i.split("：")[1] for i in education_info]
-        global education_list
         education_list = [education_full] + education_info
     bank_credit = tree.find('.//i[@class="renbankcredit"]')
     renbankcredit = None
     if bank_credit is not None:
-        global renbankcredit
         renbankcredit = bank_credit.getparent().text_content().strip()
+    return_history = [None,None,None]
+    try:
+        return_str = re.compile(".*正常还清.*").findall(page_text)[0]
+        return_str = re.sub(".*<p>|</p>.*|次| ","",return_str)
+        return_history = [x.split("：")[1] for x in return_str.split("，")]
+    except ignore:
+        pass
+    borrow_history = [None,None,None]
+    try:
+        borrow = tree.findall('.//span[@class="orange"]')
+        borrow_history = [re.sub("¥|,|\s","",x.text) for x in borrow]
+    except ignore:
+        pass
 
     print(elements_text)
     print(table_text)
     print(education_list)
     print(renbankcredit)
+    print(return_history)
+    print(borrow_history)
     return tree
 
 
@@ -151,7 +160,4 @@ def consume_queue():
         channel.stop_consuming()
     connection.close()
 
-
-
-
-
+page = test()
