@@ -1,4 +1,3 @@
-from selenium import webdriver
 import threading
 import time
 import pickle
@@ -6,7 +5,12 @@ import requests
 import pika
 import json
 import re
+import socket
+import getpass
+import sqlite3
 from lxml import html
+from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 headers = {
 "User-Agent":
     "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36"
@@ -35,20 +39,18 @@ def load_cookie_to_requests(session,file):
     for cookie in cookies:
         cookie_name=cookie['name']
         cookie_value=cookie['value']
-        #print(cookie_name)
-        #print(cookie_value)
         c = {cookie_name:cookie_value}
         session.cookies.update(c)
     print(len(session.cookies))
 
 
-def load_cookie_to_webdriver(driver,file):
+def load_cookie_to_webdriver(file):
+    driver = webdriver.Firefox()
     driver.get(ppdai_url)
     cookies = pickle.load(open(file,'rb'))
     for cookie in cookies:
-        print("adding cookie")
-        print(cookie)
         driver.add_cookie(cookie)
+    return driver
 
 
 def get_bidding_list_after_loggin(session,url):
@@ -59,7 +61,6 @@ def get_bidding_list_after_loggin(session,url):
     tree = html.fromstring(result.text.encode(encoding))
     bidding_elements = tree.findall('.//a[@class="title ell"]')
     bidding_id_list = [{"bidding_id":x.attrib["href"].split("=")[1]} for x in bidding_elements]
-    print("++++++++++++++++++")
     print(bidding_id_list)
     return bidding_id_list
 
@@ -84,7 +85,10 @@ def get_bidding_details(session,bidding_id):
     elements = tree.findall('.//div[@class="newLendDetailMoneyLeft"]/dl')
     elements_text = [x.find("./dd").text.replace(",","") for x in elements]
     first_table = tree.find('.//table[@class="lendDetailTab_tabContent_table1"]')
-    table_text= [re.sub("\s","",x.text) for x in first_table.findall(".//td")]
+    table_text = [None]*7
+    if first_table is not None:
+        table_text = [re.sub("\s", "", x.text) for x in first_table.findall(".//td")]
+
     xueli = tree.find('.//i[@class="xueli"]')
     xueji = tree.find('.//i[@class="xueji"]')
     education_list = [None,None,None,None]
@@ -92,7 +96,8 @@ def get_bidding_details(session,bidding_id):
     if xueli_or_xueji != []:
         xueli_or_xueji = xueli_or_xueji[0]
         education_full = xueli_or_xueji.getparent().text_content().strip()
-        education_info = re.sub(".*（|）.*", "", education_full).split("，")
+        education_info = re.sub("^.*?（|）\b*$", "", education_full).split("，")
+        print(education_info)
         education_info = [i.split("：")[1] for i in education_info]
         education_list = [education_full] + education_info
     bank_credit = tree.find('.//i[@class="renbankcredit"]')
@@ -100,26 +105,26 @@ def get_bidding_details(session,bidding_id):
     if bank_credit is not None:
         renbankcredit = bank_credit.getparent().text_content().strip()
     return_history = [None,None,None]
-    try:
-        return_str = re.compile(".*正常还清.*").findall(page_text)[0]
+    return_info = re.compile(".*正常还清.*").findall(page_text)
+    if len(return_info)>0:
+        return_str =return_info[0]
         return_str = re.sub(".*<p>|</p>.*|次| ","",return_str)
-        return_history = [x.split("：")[1] for x in return_str.split("，")]
-    except ignore:
-        pass
+        return_history = [int(x.split("：")[1]) for x in return_str.split("，")]
+
     borrow_history = [None,None,None]
-    try:
-        borrow = tree.findall('.//span[@class="orange"]')
-        borrow_history = [re.sub("¥|,|\s","",x.text) for x in borrow]
-    except ignore:
-        pass
+    borrow = tree.findall('.//span[@class="orange"]')
+    if len(borrow)>0:
+        borrow_history = [float(re.sub("¥|,|\s","",x.text)) for x in borrow]
 
     def make_map(keys,values):
         return dict(zip(keys,values))
-    m1 = make_map(["amount","rate","time_span"],elements_text)
+    m1 = make_map(["amount","rate","time_span"],[float(x) for x in elements_text])
     m2 = make_map(["purpose","sex","age","marry_status","education_no_proof","house_info","car_info"],table_text)
+    if m2["age"] is not None:
+        m2["age"] = int(m2["age"])
     m3 = make_map([" education_detail","school","education_level","education_method"],education_list)
     renbankcredit = False if renbankcredit is None else True
-    m4 = {"ren_bank_credit":renbankcredit}
+    m4 = {"ren_bank_credit":renbankcredit,"bidding_id":bidding_id}
     m5 = make_map(["cnt_return_on_time","cnt_return_less_than_15","cnt_return_great_than_15"],return_history)
     m6 = make_map(["total_load_in_history","waiting_to_pay","waiting_to_get_back"],borrow_history)
     result = merge_dicts(m1,m2,m3,m4,m5,m6)
@@ -167,7 +172,6 @@ def consume_queue(source_queue, target_queue,convert_function):
         msg = convert_function(body)
         ch.basic_publish("pp",target_queue,json.dumps(msg))
         time.sleep(1)
-
         ch.basic_ack(delivery_tag=method.delivery_tag)
     print("----------------")
     url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
@@ -202,10 +206,167 @@ def consume_queue(source_queue, target_queue,convert_function):
     connection.close()
 
 
-load_cookie_to_requests(s, file)
-t1 = threading.Thread(target=consume_queue,args=("middle","middle_no_detail",generate_bidding_list_from_message))
-t2 = threading.Thread(target=consume_queue,args=("middle_no_detail_no_duplication","middle_with_detail",generate_bidding_detail_from_message))
-t1.start()
-t2.start()
+
+def prepare_db():
+    conn = sqlite3.connect(':memory:')
+    cur = conn.cursor()
+    cur.execute("""
+    CREATE TABLE bidding_history
+    (
+      ppdai_level varchar(10),
+      user_name varchar(100),
+      title varchar(200),
+      bidding_id varchar(100),
+      certificates varchar(1000),
+      rate double,
+      amount double,
+      time_span double,
+      purpose varchar(1000),
+      sex varchar(10),
+      marry_status varchar(100),
+      education_no_proof varchar(100),
+      house_info varchar(100),
+      car_info varchar(100),
+      education_detail varchar(500),
+      school varchar(100),
+      education_level varchar(100),
+      education_method varchar(100),
+      cnt_return_on_time integer,
+      cnt_return_less_than_15 integer,
+      cnt_return_great_than_15 integer,
+      total_load_in_history double,
+      waiting_to_pay double,
+      waiting_to_get_back double,
+      age double,
+      cnt_successful_bidding integer,
+      cnt_fail_bidding integer,
+      ren_bank_credit boolean DEFAULT false,
+      hukou boolean DEFAULT false,
+      certificates_in_str varchar(1000),
+      location varchar(100),
+      category varchar(100),
+      rank int,
+      wsl_rank int,
+      score float,
+      is_211 boolean,
+      is_985 boolean,
+      star int
+    )
+    """)
+    cur.execute("select count(*) from bidding_history")
+    print(cur.fetchone())
+    return (conn,cur)
+
+
+def do_bidding(driver,bidding_id,amount):
+    url = "http://invest.ppdai.com/loan/info?id={}".format(bidding_id)
+    print(driver)
+    driver.get(url)
+    try:
+        driver.find_element_by_class_name('expquickbid')
+        print("bidding of {} is completed".format(bidding_id))
+    except NoSuchElementException:
+        total_element = driver.find_element_by_id('accountTotal')
+        account_total = float(re.sub("¥|,","",total_element.text))
+        bidding_left_element = driver.find_element_by_id('listRestMoney')
+        bidding_left = float(re.sub("¥|,", "", bidding_left_element.text))
+        element1 = driver.find_element_by_class_name('newLendDetailMoneyLeft')
+        total_borrow_element = element1.find_elements_by_xpath("./dl")[0].find_element_by_xpath(".//dd")
+        total_borrow = int(re.sub("¥|,", "", total_borrow_element.text))
+        bidding_amount = min([int(x) for x in [bidding_left,account_total,0.3*total_borrow,amount]])
+        print(bidding_left)
+        print(account_total)
+        print(total_borrow)
+        print(bidding_amount)
+        input_element = driver.find_element_by_class_name('inputAmount')
+        input_element.clear()
+        input_element.send_keys(str(bidding_amount))
+        form_element = driver.find_element_by_class_name('inputbox').find_element_by_xpath("./input")
+        form_element.click()
+        bidding_element = driver.find_element_by_id("btBid")
+
+bidding_sql = """
+case
+when amount>20000 then 0
+when (star>=5 or wsl_rank<=25) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人','自考','自学考试') and education_level not in ('专科') and cast(rate as int) >=20 then 512
+when  (star>=4  or  wsl_rank<=90) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人') and education_level not in ('专科') and cast(rate as int)>=20 then 361
+when star>=5 and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人') and education_level not in ('专科') and cast(rate as int) >= 20 then 482
+when  (star>=4  or  wsl_rank<=90) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人') and education_level not in ('专科') and waiting_to_pay < 4000 and cast(rate as int)=20 then 361
+when  (star>=4  or  wsl_rank<=180) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人','自考','自学考试')
+and education_level not in ('专科') and waiting_to_pay < 4000 and cast(rate as int)>=20 then 301
+when waiting_to_get_back >=1000 and ppdai_level in ('A','B','C','D') and cast(rate as int) >= 22 and amount + waiting_to_pay <15000 then 90
+when ppdai_level = 'C' and cast(rate as int) = 22 and age < 40 and cnt_return_less_than_15 * 4 < cnt_return_on_time and cnt_return_on_time > 0 and
+title not like '%闪电%' and education_level is not null and amount + waiting_to_pay <15000 then 222
+else 0 end
+"""
+
+def get_message_from_broadcast_exchange(driver):
+    (conn_sqlliet,cursor) = prepare_db()
+    def callback(ch, method, properties, body):
+        json_msg = json.loads(str(body, encoding='UTF-8'))
+        json_msg_remove_empty_value = dict((k, v) for k, v in json_msg.items() if v)
+        bidding_id = json_msg["bidding_id"]
+        print(json_msg_remove_empty_value)
+        placeholder = ", ".join(["?"] * len(json_msg_remove_empty_value))
+        stmt = "insert into bidding_history ({columns}) values ({values});"\
+            .format(columns=",".join(json_msg_remove_empty_value.keys()),values=placeholder)
+        print(stmt)
+        values = list(json_msg_remove_empty_value.values())
+        cursor.execute(stmt, values)
+        # if sex information is not available, that means the bidding is completed
+        if json_msg_remove_empty_value.get("sex",1) !=1:
+            sql = "select {} from bidding_history where bidding_id={}".format(bidding_sql,bidding_id)
+            cursor.execute(sql)
+            amount = cursor.fetchone()[0]
+            print("********************")
+            sql = "select * from bidding_history where bidding_id={}".format(bidding_id)
+            cursor.execute(sql)
+            print(cursor.fetchone())
+            if amount>0:
+                do_bidding(driver, bidding_id, amount)
+        else:
+            print("bidding of {} is completed".format(bidding_id))
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
+    parameters = pika.URLParameters(url_params)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    user_name = getpass.getuser()
+    host_name = socket.gethostname()
+    result = channel.queue_declare(queue='broadcast-{}-{}'.format(host_name,user_name), durable=False)
+    channel.basic_qos(prefetch_count=1)
+    queue_name = result.method.queue
+    channel.queue_bind(queue=queue_name,
+                       exchange='pp-broadcast')
+    channel.basic_consume(callback,
+                          queue=queue_name,
+                          no_ack=False)
+    try:
+        channel.start_consuming()
+    except KeyboardInterrupt:
+        channel.stop_consuming()
+    connection.close()
+
+
+def start_tasks(driver):
+    load_cookie_to_requests(s, file)
+    t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message))
+    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message))
+    t1.start()
+    t2.start()
+    get_message_from_broadcast_exchange(driver)
+
+
+
+
+
+
 
 #page = test()
+
+driver = load_cookie_to_webdriver(file)
+start_tasks(driver)
+#prepare_db()
+#
+#do_bidding(driver,20243087,111)
