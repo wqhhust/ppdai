@@ -294,6 +294,7 @@ def do_bidding(driver,bidding_id,amount):
         form_element = driver.find_element_by_class_name('inputbox').find_element_by_xpath("./input")
         form_element.click()
         bidding_element = driver.find_element_by_id("btBid")
+        bidding_element.click()
 
 bidding_sql = """
 case
