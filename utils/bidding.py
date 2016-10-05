@@ -117,13 +117,12 @@ def get_bidding_details(session,bidding_id):
         return dict(zip(keys,values))
     m1 = make_map(["amount","rate","time_span"],elements_text)
     m2 = make_map(["purpose","sex","age","marry_status","education_no_proof","house_info","car_info"],table_text)
-    m3 = make_map([" education_detail","school","education_level","ducation_method"],education_list)
+    m3 = make_map([" education_detail","school","education_level","education_method"],education_list)
     renbankcredit = False if renbankcredit is None else True
     m4 = {"ren_bank_credit":renbankcredit}
     m5 = make_map(["cnt_return_on_time","cnt_return_less_than_15","cnt_return_great_than_15"],return_history)
     m6 = make_map(["total_load_in_history","waiting_to_pay","waiting_to_get_back"],borrow_history)
     result = merge_dicts(m1,m2,m3,m4,m5,m6)
-    #result = merge_dicts(m1, m2,m3)
     print(result)
     return result
 
@@ -153,14 +152,14 @@ def generate_bidding_list_from_message(msg):
     if return_msg == []:
         return []
     else:
-        return [return_msg]
+        return return_msg
 
 
 def generate_bidding_detail_from_message(msg):
-    json_msg = json.loads(str(msg))
+    json_msg = json.loads(str(msg, encoding='UTF-8'))
     bidding_id = json_msg["bidding_id"]
-    print(bidding_id)
-    get_bidding_details(s,bidding_id)
+    print("processing bidding id of {}".format(bidding_id))
+    return get_bidding_details(s,bidding_id)
 
 def consume_queue(source_queue, target_queue,convert_function):
     def callback(ch, method, properties, body):
@@ -204,7 +203,9 @@ def consume_queue(source_queue, target_queue,convert_function):
 
 
 load_cookie_to_requests(s, file)
-t = threading.Thread(target=consume_queue,args=("middle","middle_no_detail",generate_bidding_list_from_message))
-#t.start()
+t1 = threading.Thread(target=consume_queue,args=("middle","middle_no_detail",generate_bidding_list_from_message))
+t2 = threading.Thread(target=consume_queue,args=("middle_no_detail_no_duplication","middle_with_detail",generate_bidding_detail_from_message))
+t1.start()
+t2.start()
 
-page = test()
+#page = test()
