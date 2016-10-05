@@ -176,12 +176,16 @@ def generate_bidding_detail_from_message(msg):
     print("processing bidding id of {}".format(bidding_id))
     return get_bidding_details(s,bidding_id)
 
-def consume_queue(source_queue, target_queue,convert_function):
+def consume_queue(source_queue, target_queue,convert_function,sleep_time):
     def callback(ch, method, properties, body):
         print(" [x] Received %r" % body)
-        msg = convert_function(body)
-        ch.basic_publish("pp",target_queue,json.dumps(msg))
-        time.sleep(1)
+        try:
+            msg = convert_function(body)
+            ch.basic_publish("pp",target_queue,json.dumps(msg))
+        except Exception as e:
+            print("Error:---------------------------------------")
+            print(e)
+        time.sleep(sleep_time)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     print("convert from queue of {} to queue of {}".format(source_queue,target_queue))
     url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
@@ -256,6 +260,8 @@ def prepare_db():
       location varchar(100),
       category varchar(100),
       rank int,
+      hostname varchar(100),
+      os_user_name varchar(100),
       wsl_rank int,
       score float,
       is_211 boolean,
@@ -330,7 +336,7 @@ def get_message_from_broadcast_exchange(driver):
             cursor.execute(sql)
             amount = cursor.fetchone()[0]
             print("********************")
-            print("the suggested amount is:".format(amount))
+            print("the suggested amount is:{}".format(amount))
             print("********************")
             sql = "select * from bidding_history where bidding_id={}".format(bidding_id)
             cursor.execute(sql)
@@ -364,8 +370,8 @@ def get_message_from_broadcast_exchange(driver):
 
 def start_tasks(driver):
     load_cookie_to_requests(s, file)
-    t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message))
-    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message))
+    t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
+    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,1))
     t1.start()
     t2.start()
     print("listening on broadcast queue")
@@ -385,3 +391,5 @@ start_tasks(driver)
 # tree=html.fromstring(a)
 # a=tree.xpath(".//span[contains(@class, 'creditRating')]")
 # print(a[0].attrib["class"].replace("creditRating ",""))
+# select * from (select * from rabbitmq_bidding_history order by created_time desc limit 500) x where school is not null
+#  (select * from rabbitmq_bidding_history order by created_time desc limit 500) 
