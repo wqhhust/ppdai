@@ -20,6 +20,8 @@ s.headers.update(headers)
 
 ppdai_url = "http://www.ppdai.com"
 file = "/data/ppdai/181.dmp"
+os_user_name = getpass.getuser()
+host_name = socket.gethostname()
 
 
 def dump_cookie(file):
@@ -130,7 +132,9 @@ def get_bidding_details(session,bidding_id):
     user_name = tree.find('.//a[@class="username"]').text
     title = tree.find('.//div[@class="newLendDetailbox"]/h3/span').text
     m4 = {"ren_bank_credit":renbankcredit,"bidding_id":bidding_id,
-          "ppdai_level":ppdai_level, "user_name":user_name, "title":title}
+          "ppdai_level":ppdai_level, "user_name":user_name, "title":title,
+          "os_user_name":os_user_name,"hostname":host_name
+          }
     m5 = make_map(["cnt_return_on_time","cnt_return_less_than_15","cnt_return_great_than_15"],return_history)
     m6 = make_map(["total_load_in_history","waiting_to_pay","waiting_to_get_back"],borrow_history)
     result = merge_dicts(m1,m2,m3,m4,m5,m6)
