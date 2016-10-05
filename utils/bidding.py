@@ -98,8 +98,9 @@ def get_bidding_details(session,bidding_id):
         education_full = xueli_or_xueji.getparent().text_content().strip()
         education_info = re.sub("^.*?（|）\b*$", "", education_full).split("，")
         print(education_info)
-        education_info = [i.split("：")[1] for i in education_info]
-        education_list = [education_full] + education_info
+        if len(education_info)>1:
+            education_info = [i.split("：")[1] for i in education_info]
+            education_list = [education_full] + education_info
     bank_credit = tree.find('.//i[@class="renbankcredit"]')
     renbankcredit = None
     if bank_credit is not None:
@@ -126,7 +127,10 @@ def get_bidding_details(session,bidding_id):
 
     ppdai_level = tree.xpath(".//span[contains(@class, 'creditRating')]")[0].attrib["class"].replace("creditRating ", "")
     renbankcredit = False if renbankcredit is None else True
-    m4 = {"ren_bank_credit":renbankcredit,"bidding_id":bidding_id,"ppdai_level":ppdai_level}
+    user_name = tree.find('.//a[@class="username"]').text
+    title = tree.find('.//div[@class="newLendDetailbox"]/h3/span').text
+    m4 = {"ren_bank_credit":renbankcredit,"bidding_id":bidding_id,
+          "ppdai_level":ppdai_level, "user_name":user_name, "title":title}
     m5 = make_map(["cnt_return_on_time","cnt_return_less_than_15","cnt_return_great_than_15"],return_history)
     m6 = make_map(["total_load_in_history","waiting_to_pay","waiting_to_get_back"],borrow_history)
     result = merge_dicts(m1,m2,m3,m4,m5,m6)
