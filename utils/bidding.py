@@ -123,8 +123,10 @@ def get_bidding_details(session,bidding_id):
     if m2["age"] is not None:
         m2["age"] = int(m2["age"])
     m3 = make_map([" education_detail","school","education_level","education_method"],education_list)
+
+    ppdai_level = tree.xpath(".//span[contains(@class, 'creditRating')]")[0].attrib["class"].replace("creditRating ", "")
     renbankcredit = False if renbankcredit is None else True
-    m4 = {"ren_bank_credit":renbankcredit,"bidding_id":bidding_id}
+    m4 = {"ren_bank_credit":renbankcredit,"bidding_id":bidding_id,"ppdai_level":ppdai_level}
     m5 = make_map(["cnt_return_on_time","cnt_return_less_than_15","cnt_return_great_than_15"],return_history)
     m6 = make_map(["total_load_in_history","waiting_to_pay","waiting_to_get_back"],borrow_history)
     result = merge_dicts(m1,m2,m3,m4,m5,m6)
@@ -173,7 +175,7 @@ def consume_queue(source_queue, target_queue,convert_function):
         ch.basic_publish("pp",target_queue,json.dumps(msg))
         time.sleep(1)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    print("----------------")
+    print("convert from queue of {} to queue of {}".format(source_queue,target_queue))
     url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
 
     parameters = pika.URLParameters(url_params)
@@ -319,6 +321,8 @@ def get_message_from_broadcast_exchange(driver):
             cursor.execute(sql)
             amount = cursor.fetchone()[0]
             print("********************")
+            print("the suggested amount is:".format(amount))
+            print("********************")
             sql = "select * from bidding_history where bidding_id={}".format(bidding_id)
             cursor.execute(sql)
             print(cursor.fetchone())
@@ -355,18 +359,20 @@ def start_tasks(driver):
     t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message))
     t1.start()
     t2.start()
+    print("listening on broadcast queue")
     get_message_from_broadcast_exchange(driver)
 
 
-
-
-
-
-
-#page = test()
-
 driver = load_cookie_to_webdriver(file)
 start_tasks(driver)
-#prepare_db()
 #
-#do_bidding(driver,20243087,111)
+# a="""
+# <div>
+# aaa
+# <span title="魔镜等级：AAA至F等级依次降低，等级越高逾期率越低。点击等级了解更多。" class="creditRating D">aaabbb</span>
+# </div>
+# """
+#
+# tree=html.fromstring(a)
+# a=tree.xpath(".//span[contains(@class, 'creditRating')]")
+# print(a[0].attrib["class"].replace("creditRating ",""))
