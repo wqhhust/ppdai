@@ -299,9 +299,13 @@ def do_bidding(driver,bidding_id,amount):
         input_element.send_keys(str(bidding_amount))
         form_element = driver.find_element_by_class_name('inputbox').find_element_by_xpath("./input")
         form_element.click()
+        driver.switch_to_active_element
         bidding_element = driver.find_element_by_id("btBid")
-        bidding_element.click()
-
+        try:
+            bidding_element.click()
+        except Exception as e:
+            print("Error: when click")
+            print(e)
 bidding_sql = """
 case
 when amount>20000 then 0
@@ -337,10 +341,10 @@ def get_message_from_broadcast_exchange(driver):
             amount = cursor.fetchone()[0]
             print("********************")
             print("the suggested amount is:{}".format(amount))
-            print("********************")
             sql = "select * from bidding_history where bidding_id={}".format(bidding_id)
             cursor.execute(sql)
             print(cursor.fetchone())
+            print("********************")
             if amount>0:
                 do_bidding(driver, bidding_id, amount)
         else:
@@ -380,6 +384,7 @@ def start_tasks(driver):
 
 driver = load_cookie_to_webdriver(file)
 start_tasks(driver)
+#do_bidding(driver,21233936,50)
 #
 # a="""
 # <div>
