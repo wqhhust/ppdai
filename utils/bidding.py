@@ -11,6 +11,8 @@ import sqlite3
 from lxml import html
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
+
+import utils
 headers = {
 "User-Agent":
     "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36"
@@ -22,6 +24,7 @@ ppdai_url = "http://www.ppdai.com"
 file = "/data/ppdai/181.dmp"
 os_user_name = getpass.getuser()
 host_name = socket.gethostname()
+bidding_sql = utils.get_sql()
 
 
 def dump_cookie(file):
@@ -313,20 +316,7 @@ def do_bidding(driver,bidding_id,amount):
                 print("Error: when click")
                 print(e)
                 time.sleep(0.5)
-bidding_sql = """
-case
-when amount>20000 then 0
-when (star>=5 or wsl_rank<=25) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人','自考','自学考试') and education_level not in ('专科') and cast(rate as int) >=20 then 512
-when  (star>=4  or  wsl_rank<=90) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人') and education_level not in ('专科') and cast(rate as int)>=20 then 361
-when star>=5 and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人') and education_level not in ('专科') and cast(rate as int) >= 20 then 482
-when  (star>=4  or  wsl_rank<=90) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人') and education_level not in ('专科') and waiting_to_pay < 4000 and cast(rate as int)=20 then 361
-when  (star>=4  or  wsl_rank<=180) and ppdai_level in ('A','B','C','D') AND education_method not in ('网络教育','成人','自考','自学考试')
-and education_level not in ('专科') and waiting_to_pay < 4000 and cast(rate as int)>=20 then 301
-when waiting_to_get_back >=1000 and ppdai_level in ('A','B','C','D') and cast(rate as int) >= 22 and amount + waiting_to_pay <15000 then 90
-when ppdai_level = 'C' and cast(rate as int) = 22 and age < 40 and cnt_return_less_than_15 * 4 < cnt_return_on_time and cnt_return_on_time > 0 and
-title not like '%闪电%' and education_level is not null and amount + waiting_to_pay <15000 then 222
-else 0 end
-"""
+
 
 def get_message_from_broadcast_exchange(driver):
     (conn_sqlliet,cursor) = prepare_db()
