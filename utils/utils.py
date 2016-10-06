@@ -3,9 +3,11 @@ import requests
 import configparser
 from lxml import html
 
+config_file = "/data/ppdai/blacklist.config"
+
 def login():
     config = configparser.ConfigParser()
-    config.read("/data/ppdai/blacklist.config")
+    config.read(config_file)
     user_config = config["user"]
 
     session_requests = requests.session()
@@ -32,3 +34,12 @@ def get_pages(session_requests,url):
     pages_text = tree.find('.//span[@class="pagerstatus"]').text
     pages_count = int(re.compile("\d+").findall(pages_text)[0])
     return pages_count
+
+
+def get_sql():
+    config = configparser.ConfigParser(interpolation=None)
+    config.read(config_file)
+    runtime = config["runtime"]
+    return runtime["sql"]
+
+
