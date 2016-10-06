@@ -353,7 +353,12 @@ def get_message_from_broadcast_exchange(driver):
             print(cursor.fetchone())
             print("********************")
             if amount>0:
-                do_bidding(driver, bidding_id, amount)
+                try:
+                    do_bidding(driver, bidding_id, amount)
+                except Exception as e:
+                    print("Error: error when run do_bidding")
+                    print(e)
+
         else:
             print("bidding of {} is completed".format(bidding_id))
         ch.basic_ack(delivery_tag=method.delivery_tag)
