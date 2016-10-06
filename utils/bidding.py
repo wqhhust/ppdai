@@ -329,8 +329,8 @@ def do_bidding(driver,bidding_id,amount):
         for x in range(10):
             try:
                 bidding_element.click()
-                print("success after try {} times".format(x+1))
-                break
+                time.sleep(0.5)
+                print("success after try {} times for bidding_id of {}".format(x+1, bidding_id))
             except Exception as e:
                 print("Error: when click")
                 print(e)
