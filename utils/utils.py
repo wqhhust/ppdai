@@ -1,9 +1,14 @@
 import re
 import requests
 import configparser
+import os
+from os.path import dirname
 from lxml import html
 
-config_file = "/data/ppdai/blacklist.config"
+
+current_file = os.path.realpath(__file__)
+config_file = os.path.join(dirname(dirname(current_file)),"blacklist.config")
+#config_file = "/data/ppdai/blacklist.config"
 
 def login():
     config = configparser.ConfigParser()
