@@ -22,7 +22,6 @@ s = requests.session()
 s.headers.update(headers)
 
 ppdai_url = "http://www.ppdai.com"
-file = "/data/ppdai/181.dmp"
 root_directory = utils.get_root_directory()
 file_pattern = root_directory +"/*.dmp"
 dump_files_list = glob.glob(file_pattern)
@@ -31,7 +30,7 @@ host_name = socket.gethostname()
 (bidding_sql,start_firefox,url_params) = utils.get_sql()
 
 
-def dump_cookie(file):
+def dump_cookie():
     fp = webdriver.FirefoxProfile()
     fp.set_preference("http.response.timeout", 1)
     fp.set_preference("dom.max_script_run_time", 1)
@@ -39,6 +38,8 @@ def dump_cookie(file):
     driver.set_page_load_timeout(10)
     driver.get(ppdai_url)
     time.sleep(30)
+    user_name= driver.find_element_by_class_name("hasStatusArrow").find_element_by_xpath("./a").text.strip()
+    file = "{}/{}.dmp".format(root_directory,user_name)
     pickle.dump(driver.get_cookies(), open(file,"wb"))
     return driver
 
@@ -60,10 +61,14 @@ def test_dump(file):
     match_count = len(re.compile("loginByPassword").findall(result.text))
     if match_count == 0:
         print("login successfully")
-        return True
+        tree = html.fromstring(result.text)
+        total_amount = tree.find('.//span[@class="my-ac-ps-yue"]').text
+        total_amount = float(re.sub("¥|,","",total_amount))
+        print(total_amount)
+        return (total_amount,True,file)
     else:
         print("login failed")
-        return False
+        return (0, False, None)
 
 
 def load_cookie_to_webdriver(file):
@@ -76,7 +81,6 @@ def load_cookie_to_webdriver(file):
 
 
 def get_bidding_list_after_loggin(session,url):
-    print(url)
     result = session.get(url)
     encoding = result.encoding
     page_text = result.text.encode(encoding)
@@ -399,15 +403,21 @@ def start_tasks(driver):
         get_message_from_broadcast_exchange(driver)
 
 
+def get_cookies_file_with_max_amount():
+    return sorted([test_dump(x) for x in dump_files_list])[-1][-1]
 
-for x in dump_files_list:
-    if test_dump(x):
-        break
 
+file = get_cookies_file_with_max_amount()
+print(file)
 driver = None
 if start_firefox:
     driver = load_cookie_to_webdriver(file)
 start_tasks(driver)
+
+
 #do_bidding(driver,21425176,50)
 # select * from (select * from rabbitmq_bidding_history order by created_time desc limit 500) x where school is not null
 #  (select * from rabbitmq_bidding_history order by created_time desc limit 500) 
+
+
+# driver = dump_cookie()
