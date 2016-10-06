@@ -404,7 +404,10 @@ def start_tasks(driver):
 
 
 def get_cookies_file_with_max_amount():
-    return sorted([test_dump(x) for x in dump_files_list])[-1][-1]
+    if len(dump_files_list) > 0:
+        return sorted([test_dump(x) for x in dump_files_list])[-1][-1]
+    else:
+        return "file_not_exists"
 
 
 file = get_cookies_file_with_max_amount()
