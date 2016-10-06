@@ -24,7 +24,7 @@ ppdai_url = "http://www.ppdai.com"
 file = "/data/ppdai/181.dmp"
 os_user_name = getpass.getuser()
 host_name = socket.gethostname()
-(bidding_sql,start_firefox) = utils.get_sql()
+(bidding_sql,start_firefox,url_params) = utils.get_sql()
 
 
 def dump_cookie(file):
@@ -191,8 +191,6 @@ def consume_queue(source_queue, target_queue,convert_function,sleep_time):
         time.sleep(sleep_time)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     print("convert from queue of {} to queue of {}".format(source_queue,target_queue))
-    url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
-
     parameters = pika.URLParameters(url_params)
     connection = pika.BlockingConnection(parameters)
     channel = connection.channel()
@@ -353,7 +351,6 @@ def get_message_from_broadcast_exchange(driver):
             print("bidding of {} is completed".format(bidding_id))
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    url_params = "amqp://ppdai:ppdai2016@123.206.203.97"
     parameters = pika.URLParameters(url_params)
     connection = pika.BlockingConnection(parameters)
     channel = connection.channel()

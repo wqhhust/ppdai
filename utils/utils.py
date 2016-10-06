@@ -45,6 +45,6 @@ def get_sql():
     config = configparser.ConfigParser(interpolation=None)
     config.read(config_file)
     bidding = config["bidding"]
-    result = (bidding["sql"],config.getboolean("bidding","start_firefox"))
+    result = (bidding["sql"],config.getboolean("bidding","start_firefox"),bidding["rabbitmq_url"])
     print(result)
     return result
