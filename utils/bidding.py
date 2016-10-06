@@ -387,16 +387,5 @@ if start_firefox:
     driver = load_cookie_to_webdriver(file)
 start_tasks(driver)
 #do_bidding(driver,21425176,50)
-#
-# a="""
-# <div>
-# aaa
-# <span title="魔镜等级：AAA至F等级依次降低，等级越高逾期率越低。点击等级了解更多。" class="creditRating D">aaabbb</span>
-# </div>
-# """
-#
-# tree=html.fromstring(a)
-# a=tree.xpath(".//span[contains(@class, 'creditRating')]")
-# print(a[0].attrib["class"].replace("creditRating ",""))
 # select * from (select * from rabbitmq_bidding_history order by created_time desc limit 500) x where school is not null
 #  (select * from rabbitmq_bidding_history order by created_time desc limit 500) 
