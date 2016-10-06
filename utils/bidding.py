@@ -299,13 +299,20 @@ def do_bidding(driver,bidding_id,amount):
         input_element.send_keys(str(bidding_amount))
         form_element = driver.find_element_by_class_name('inputbox').find_element_by_xpath("./input")
         form_element.click()
-        driver.switch_to_active_element
         bidding_element = driver.find_element_by_id("btBid")
-        try:
-            bidding_element.click()
-        except Exception as e:
-            print("Error: when click")
-            print(e)
+        driver.execute_script("document.getElementById('btBid').setAttribute('visibility', 'true');");
+        # driver.switch_to_alert()
+        # driver.switch_to_active_element()
+        time.sleep(0.5)
+        for x in range(10):
+            try:
+                bidding_element.click()
+                print("success after try {} times".format(x+1))
+                break
+            except Exception as e:
+                print("Error: when click")
+                print(e)
+                time.sleep(0.5)
 bidding_sql = """
 case
 when amount>20000 then 0
@@ -384,7 +391,7 @@ def start_tasks(driver):
 
 driver = load_cookie_to_webdriver(file)
 start_tasks(driver)
-#do_bidding(driver,21233936,50)
+#do_bidding(driver,21425176,50)
 #
 # a="""
 # <div>
