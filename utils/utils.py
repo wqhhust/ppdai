@@ -48,3 +48,7 @@ def get_sql():
     result = (bidding["sql"],config.getboolean("bidding","start_firefox"),bidding["rabbitmq_url"])
     print(result)
     return result
+
+
+def get_root_directory():
+    return dirname(dirname(current_file))

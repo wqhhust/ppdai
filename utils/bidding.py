@@ -1,6 +1,7 @@
 import threading
 import time
 import pickle
+import glob
 import requests
 import pika
 import json
@@ -22,6 +23,9 @@ s.headers.update(headers)
 
 ppdai_url = "http://www.ppdai.com"
 file = "/data/ppdai/181.dmp"
+root_directory = utils.get_root_directory()
+file_pattern = root_directory +"/*.dmp"
+dump_files_list = glob.glob(file_pattern)
 os_user_name = getpass.getuser()
 host_name = socket.gethostname()
 (bidding_sql,start_firefox,url_params) = utils.get_sql()
@@ -47,6 +51,19 @@ def load_cookie_to_requests(session,file):
         c = {cookie_name:cookie_value}
         session.cookies.update(c)
     print(len(session.cookies))
+
+
+def test_dump(file):
+    s.get(ppdai_url)
+    load_cookie_to_requests(s,file)
+    result = s.get("http://invest.ppdai.com/account/lend")
+    match_count = len(re.compile("loginByPassword").findall(result.text))
+    if match_count == 0:
+        print("login successfully")
+        return True
+    else:
+        print("login failed")
+        return False
 
 
 def load_cookie_to_webdriver(file):
@@ -381,6 +398,11 @@ def start_tasks(driver):
     if start_firefox:
         get_message_from_broadcast_exchange(driver)
 
+
+
+for x in dump_files_list:
+    if test_dump(x):
+        break
 
 driver = None
 if start_firefox:
