@@ -24,7 +24,7 @@ ppdai_url = "http://www.ppdai.com"
 file = "/data/ppdai/181.dmp"
 os_user_name = getpass.getuser()
 host_name = socket.gethostname()
-bidding_sql = utils.get_sql()
+(bidding_sql,start_firefox) = utils.get_sql()
 
 
 def dump_cookie(file):
@@ -381,10 +381,13 @@ def start_tasks(driver):
     t1.start()
     t2.start()
     print("listening on broadcast queue")
-    get_message_from_broadcast_exchange(driver)
+    if start_firefox:
+        get_message_from_broadcast_exchange(driver)
 
 
-driver = load_cookie_to_webdriver(file)
+driver = None
+if start_firefox:
+    driver = load_cookie_to_webdriver(file)
 start_tasks(driver)
 #do_bidding(driver,21425176,50)
 #

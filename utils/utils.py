@@ -39,7 +39,7 @@ def get_pages(session_requests,url):
 def get_sql():
     config = configparser.ConfigParser(interpolation=None)
     config.read(config_file)
-    runtime = config["runtime"]
-    return runtime["sql"]
-
-
+    bidding = config["bidding"]
+    result = (bidding["sql"],config.getboolean("bidding","start_firefox"))
+    print(result)
+    return result
