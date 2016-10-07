@@ -351,6 +351,7 @@ def get_message_from_broadcast_exchange(driver):
         values = list(json_msg_remove_empty_value.values())
         cursor.execute(stmt, values)
         # if sex information is not available, that means the bidding is completed
+        print("=====the messge from broadcast queue is: {}".format(str(json_msg_remove_empty_value)))
         if json_msg_remove_empty_value.get("sex",1) !=1:
             sql = "select {} from bidding_history where bidding_id={}".format(bidding_sql,bidding_id)
             cursor.execute(sql)
@@ -398,8 +399,8 @@ def start_tasks(driver):
     t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,1))
     t1.start()
     t2.start()
-    print("listening on broadcast queue")
     if start_firefox:
+        print("listening on broadcast queue")
         get_message_from_broadcast_exchange(driver)
 
 
