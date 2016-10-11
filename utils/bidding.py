@@ -209,7 +209,8 @@ def consume_queue(source_queue, target_queue,convert_function,sleep_time):
         except Exception as e:
             print("Error:---------------------------------------")
             print(e)
-        time.sleep(sleep_time)
+        if sleep_time > 0:
+            time.sleep(sleep_time)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     print("convert from queue of {} to queue of {}".format(source_queue,target_queue))
     parameters = pika.URLParameters(url_params)
@@ -396,7 +397,7 @@ def get_message_from_broadcast_exchange(driver):
 def start_tasks(driver):
     load_cookie_to_requests(s, file)
     t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
-    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,1))
+    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
     t1.start()
     t2.start()
     if start_firefox:
