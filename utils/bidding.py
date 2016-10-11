@@ -30,6 +30,7 @@ host_name = socket.gethostname()
 
 def get_dump_files_list():
     dump_files_list = glob.glob(file_pattern)
+    return dump_files_list
 
 def dump_cookie():
     fp = webdriver.FirefoxProfile()
