@@ -35,7 +35,7 @@ def get_dump_files_list():
 def dump_cookie():
     fp = webdriver.FirefoxProfile()
     fp.set_preference("http.response.timeout", 1)
-    fp.set_preference("dom.max_script_run_time", 10)
+    fp.set_preference("dom.max_script_run_time", 20)
     driver = webdriver.Firefox(firefox_profile=fp)
     driver.set_page_load_timeout(10)
     driver.get(ppdai_url)
