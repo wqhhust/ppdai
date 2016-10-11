@@ -24,11 +24,12 @@ s.headers.update(headers)
 ppdai_url = "http://www.ppdai.com"
 root_directory = utils.get_root_directory()
 file_pattern = root_directory +"/*.dmp"
-dump_files_list = glob.glob(file_pattern)
 os_user_name = getpass.getuser()
 host_name = socket.gethostname()
 (bidding_sql,start_firefox,url_params) = utils.get_sql()
 
+def get_dump_files_list():
+    dump_files_list = glob.glob(file_pattern)
 
 def dump_cookie():
     fp = webdriver.FirefoxProfile()
@@ -406,8 +407,8 @@ def start_tasks(driver):
 
 
 def get_cookies_file_with_max_amount():
-    if len(dump_files_list) > 0:
-        return sorted([test_dump(x) for x in dump_files_list])[-1][-1]
+    if len(get_dump_files_list()) > 0:
+        return sorted([test_dump(x) for x in get_dump_files_list])[-1][-1]
     else:
         dump_cookie()
         return get_cookies_file_with_max_amount()
