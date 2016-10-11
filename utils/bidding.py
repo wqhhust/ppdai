@@ -33,7 +33,7 @@ host_name = socket.gethostname()
 def dump_cookie():
     fp = webdriver.FirefoxProfile()
     fp.set_preference("http.response.timeout", 1)
-    fp.set_preference("dom.max_script_run_time", 1)
+    fp.set_preference("dom.max_script_run_time", 10)
     driver = webdriver.Firefox(firefox_profile=fp)
     driver.set_page_load_timeout(10)
     driver.get(ppdai_url)
@@ -409,7 +409,8 @@ def get_cookies_file_with_max_amount():
     if len(dump_files_list) > 0:
         return sorted([test_dump(x) for x in dump_files_list])[-1][-1]
     else:
-        return "file_not_exists"
+        dump_cookie()
+        return get_cookies_file_with_max_amount()
 
 
 file = get_cookies_file_with_max_amount()
