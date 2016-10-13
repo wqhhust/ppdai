@@ -10,6 +10,7 @@ import socket
 import getpass
 import sqlite3
 from lxml import html
+from multiprocessing import Process
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 
@@ -399,8 +400,8 @@ def get_message_from_broadcast_exchange(driver):
 
 def start_tasks(driver):
     load_cookie_to_requests(s, file)
-    t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
-    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
+    t1 = Process.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
+    t2 = Process.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
     t1.start()
     t2.start()
     if start_firefox:
