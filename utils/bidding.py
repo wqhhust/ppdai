@@ -205,6 +205,7 @@ def generate_bidding_detail_from_message(msg):
 
 def consume_queue(source_queue, target_queue,convert_function,sleep_time):
     def callback(ch, method, properties, body):
+        print("get message from queue of {}, and distribute message to queue of {}".format(source_queue,target_queue))
         print(" [x] Received %r" % body)
         try:
             msg = convert_function(body)
@@ -400,8 +401,8 @@ def get_message_from_broadcast_exchange(driver):
 
 def start_tasks(driver):
     load_cookie_to_requests(s, file)
-    t1 = Process.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
-    t2 = Process.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
+    t1 = Process(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
+    t2 = Process(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
     t1.start()
     t2.start()
     if start_firefox:
