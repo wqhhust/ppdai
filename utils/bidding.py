@@ -209,7 +209,7 @@ def consume_queue(source_queue, target_queue,convert_function,sleep_time):
             msg = convert_function(body)
             ch.basic_publish("pp",target_queue,json.dumps(msg))
         except Exception as e:
-            print("Error:---------------------------------------")
+            print("Error from {} to {}:---------------------------------------".format(source_queue,target_queue))
             print(e)
         if sleep_time > 0:
             time.sleep(sleep_time)
@@ -242,7 +242,7 @@ def consume_queue(source_queue, target_queue,convert_function,sleep_time):
         channel.start_consuming()
     except KeyboardInterrupt:
         channel.stop_consuming()
-    print("close rabbitmq connection................")
+    print("close rabbitmq connection from queue {} to queue {}................".format(source_queue,target_queue))
     connection.close()
 
 
