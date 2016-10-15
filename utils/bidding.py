@@ -203,7 +203,7 @@ def generate_bidding_detail_from_message(msg):
     print("processing bidding id of {}".format(bidding_id))
     return get_bidding_details(s,bidding_id)
 
-def consume_queue(source_queue, target_queue,convert_function,sleep_time):
+def consume_queue(source_queue, target_queue,convert_function,sleep_time, channel):
     def callback(ch, method, properties, body):
         print("get message from queue of {}, and distribute message to queue of {}".format(source_queue,target_queue))
         print(" [x] Received %r" % body)
@@ -217,10 +217,6 @@ def consume_queue(source_queue, target_queue,convert_function,sleep_time):
             time.sleep(sleep_time)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     print("convert from queue of {} to queue of {}".format(source_queue,target_queue))
-    parameters = pika.URLParameters(url_params)
-    connection = pika.BlockingConnection(parameters)
-    channel = connection.channel()
-    channel.basic_qos(prefetch_count=1)
 
     # channel.exchange_declare(exchange='pp',
     #                          type="topic",
@@ -240,12 +236,12 @@ def consume_queue(source_queue, target_queue,convert_function,sleep_time):
     channel.basic_consume(callback,
                           queue=source_queue,
                           no_ack=False)
-    try:
-        channel.start_consuming()
-    except KeyboardInterrupt:
-        channel.stop_consuming()
-    print("close rabbitmq connection from queue {} to queue {}................".format(source_queue,target_queue))
-    connection.close()
+    # try:
+    #     channel.start_consuming()
+    # except KeyboardInterrupt:
+    #     channel.stop_consuming()
+    # print("close rabbitmq connection from queue {} to queue {}................".format(source_queue,target_queue))
+    # connection.close()
 
 
 
@@ -401,15 +397,26 @@ def get_message_from_broadcast_exchange(driver):
 
 def start_tasks(driver):
     load_cookie_to_requests(s, file)
-    # t1 = Process(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
-    # t2 = Process(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
-    t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
-    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
-    t1.start()
-    t2.start()
     if start_firefox:
         print("listening on broadcast queue")
-        get_message_from_broadcast_exchange(driver)
+        t1 = Process(target = get_message_from_broadcast_exchange, args=(driver,))
+        t1.start()
+    parameters = pika.URLParameters(url_params)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.basic_qos(prefetch_count=1)
+    # t1 = Process(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
+    # t2 = Process(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
+    # t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3, channel))
+    # t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0, channel))
+    consume_queue("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0, channel)
+    consume_queue("middle", "middle_no_detail", generate_bidding_list_from_message,3, channel)
+    print("consuming 2 queues from pp exchange")
+    try:
+        channel.start_consuming()
+    except KeyboardInterrupt:
+        channel.stop_consuming()
+    connection.close()
 
 
 def get_cookies_file_with_max_amount():
