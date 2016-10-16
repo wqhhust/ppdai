@@ -244,6 +244,10 @@ def consume_queue(source_queue, target_queue,convert_function,sleep_time):
         channel.start_consuming()
     except KeyboardInterrupt:
         channel.stop_consuming()
+    except Exception as e:
+        print("error..................................")
+        print(e)
+        print("error end")
     print("close rabbitmq connection from queue {} to queue {}................".format(source_queue,target_queue))
     connection.close()
 
