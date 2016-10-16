@@ -129,8 +129,9 @@ def merge_dicts(*dict_args):
 def get_bidding_details(session,bidding_id):
     url = "http://www.ppdai.com/list/{}".format(bidding_id)
     print(url)
-    logger_to_get_detail.info(url)
+    logger_to_get_detail.info("begin url get request for {}".format(url))
     result = session.get(url)
+    logger_to_get_detail.info("url get request completed")
     encoding = result.encoding
     page_text = result.text
     # remove some noisy elements
