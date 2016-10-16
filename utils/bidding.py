@@ -388,14 +388,15 @@ def get_message_from_broadcast_exchange(driver):
     channel = connection.channel()
     user_name = getpass.getuser()
     host_name = socket.gethostname()
-    result = channel.queue_declare(queue='broadcast-{}-{}'.format(host_name,user_name), durable=False)
+    result = channel.queue_declare(queue='broadcast-{}-{}'.format(host_name,user_name), durable=False, auto_delete=True)
     channel.basic_qos(prefetch_count=1)
     queue_name = result.method.queue
+    print("queue of {} was declared".format(queue_name))
     channel.queue_bind(queue=queue_name,
                        exchange='pp-broadcast')
     channel.basic_consume(callback,
                           queue=queue_name,
-                          no_ack=False)
+                          no_ack=True)
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
