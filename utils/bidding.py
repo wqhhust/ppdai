@@ -1,6 +1,8 @@
 import threading
 import time
 import pickle
+import traceback
+import logging
 import glob
 import requests
 import pika
@@ -28,6 +30,29 @@ file_pattern = root_directory +"/*.dmp"
 os_user_name = getpass.getuser()
 host_name = socket.gethostname()
 (bidding_sql,start_firefox,url_params) = utils.get_sql()
+
+def get_logger(file):
+    # create logger with 'spam_application'
+    logger = logging.getLogger(file)
+    logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('{}.log'.format(file))
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+    return logger
+
+logger_to_get_detail = get_logger("detail")
+logger_to_broadcast = get_logger("broadcast")
+logger_to_bidding_list = get_logger("bidding_list")
 
 def get_dump_files_list():
     dump_files_list = glob.glob(file_pattern)
@@ -104,6 +129,7 @@ def merge_dicts(*dict_args):
 def get_bidding_details(session,bidding_id):
     url = "http://www.ppdai.com/list/{}".format(bidding_id)
     print(url)
+    logger_to_get_detail.info(url)
     result = session.get(url)
     encoding = result.encoding
     page_text = result.text
@@ -111,13 +137,16 @@ def get_bidding_details(session,bidding_id):
     page_text = re.sub("<em>.*?</em>","",page_text)
     #print(page_text)
     tree = html.fromstring(page_text)
+    logger_to_get_detail.info("get html tree from bidding_id of {}".format(url))
     elements = tree.findall('.//div[@class="newLendDetailMoneyLeft"]/dl')
+    logger_to_get_detail.info("there are {} elements".format(len(elements)))
     elements_text = [x.find("./dd").text.replace(",","") for x in elements]
     first_table = tree.find('.//table[@class="lendDetailTab_tabContent_table1"]')
     table_text = [None]*7
     if first_table is not None:
         table_text = [re.sub("\s", "", x.text) for x in first_table.findall(".//td")]
 
+    logger_to_get_detail.info("table text is {}".format(table_text))
     xueli = tree.find('.//i[@class="xueli"]')
     xueji = tree.find('.//i[@class="xueji"]')
     education_list = [None,None,None,None]
@@ -130,6 +159,7 @@ def get_bidding_details(session,bidding_id):
         if len(education_info)>1:
             education_info = [i.split("：")[1] for i in education_info]
             education_list = [education_full] + education_info
+    logger_to_get_detail.info("edcatoin detail is:{}".format(education_list))
     bank_credit = tree.find('.//i[@class="renbankcredit"]')
     renbankcredit = None
     if bank_credit is not None:
@@ -146,6 +176,7 @@ def get_bidding_details(session,bidding_id):
     if len(borrow)>0:
         borrow_history = [float(re.sub("¥|,|\s","",x.text)) for x in borrow]
 
+    logger_to_get_detail.info("borrow_history is {}".format(borrow_history))
     def make_map(keys,values):
         return dict(zip(keys,values))
     m1 = make_map(["amount","rate","time_span"],[float(x) for x in elements_text])
@@ -190,6 +221,7 @@ def generate_bidding_list_from_message(msg):
     url_template = "http://invest.ppdai.com/loan/listnew?LoanCategoryId=4&SortType=2&PageIndex={}&MinAmount=0&MaxAmount=0"
     url = url_template.format(page)
     print(url)
+    logger_to_bidding_list.info(url)
     return_msg = get_bidding_list_after_loggin(s, url)
     if return_msg == []:
         return []
@@ -353,11 +385,11 @@ def get_message_from_broadcast_exchange(driver):
         json_msg = json.loads(str(body, encoding='UTF-8'))
         json_msg_remove_empty_value = dict((k, v) for k, v in json_msg.items() if v)
         bidding_id = json_msg["bidding_id"]
-        print(json_msg_remove_empty_value)
+        logger_to_broadcast.info(json_msg_remove_empty_value)
         placeholder = ", ".join(["?"] * len(json_msg_remove_empty_value))
         stmt = "insert into bidding_history ({columns}) values ({values});"\
             .format(columns=",".join(json_msg_remove_empty_value.keys()),values=placeholder)
-        print(stmt)
+        logger_to_broadcast.info(stmt)
         values = list(json_msg_remove_empty_value.values())
         cursor.execute(stmt, values)
         # if sex information is not available, that means the bidding is completed
