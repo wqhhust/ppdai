@@ -388,7 +388,7 @@ def do_bidding(driver,bidding_id,amount):
                 print("Error: when click")
                 print(e)
                 time.sleep(0.5)
-        logger_to_broadcast.info("end bidding for {}".format(bidding_id))
+    logger_to_broadcast.info("end bidding for {}".format(bidding_id))
 
 
 def get_message_from_broadcast_exchange(driver):
