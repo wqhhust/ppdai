@@ -348,7 +348,9 @@ def prepare_db():
 def do_bidding(driver,bidding_id,amount):
     url = "http://invest.ppdai.com/loan/info?id={}".format(bidding_id)
     print(driver)
+    logger_to_broadcast.info("start bidding for {}".format(bidding_id))
     driver.get(url)
+    logger_to_broadcast.info("got the page for bidding of {}".format(bidding_id))
     try:
         driver.find_element_by_class_name('expquickbid')
         print("bidding of {} is completed".format(bidding_id))
@@ -379,11 +381,14 @@ def do_bidding(driver,bidding_id,amount):
             try:
                 bidding_element.click()
                 time.sleep(0.5)
-                print("success after try {} times for bidding_id of {}".format(x+1, bidding_id))
+                msg = "success after try {} times for bidding_id of {}".format(x+1, bidding_id)
+                print(msg)
+                logger_to_broadcast.info(msg)
             except Exception as e:
                 print("Error: when click")
                 print(e)
                 time.sleep(0.5)
+        logger_to_broadcast.info("end bidding for {}".format(bidding_id))
 
 
 def get_message_from_broadcast_exchange(driver):
