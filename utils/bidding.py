@@ -21,8 +21,11 @@ headers = {
 "User-Agent":
     "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36"
 }
-s = requests.session()
-s.headers.update(headers)
+http_session1 = requests.session()
+http_session1.headers.update(headers)
+
+http_session2 = requests.session()
+http_session2.headers.update(headers)
 
 ppdai_url = "http://www.ppdai.com"
 root_directory = utils.get_root_directory()
@@ -82,10 +85,10 @@ def load_cookie_to_requests(session,file):
     print(len(session.cookies))
 
 
-def test_dump(file):
-    s.get(ppdai_url)
-    load_cookie_to_requests(s,file)
-    result = s.get("http://invest.ppdai.com/account/lend")
+def test_dump(http_session,file):
+    http_session.get(ppdai_url)
+    load_cookie_to_requests(http_session,file)
+    result = http_session.get("http://invest.ppdai.com/account/lend")
     match_count = len(re.compile("loginByPassword").findall(result.text))
     if match_count == 0:
         print("login successfully")
@@ -130,7 +133,7 @@ def get_bidding_details(session,bidding_id):
     url = "http://www.ppdai.com/list/{}".format(bidding_id)
     print(url)
     logger_to_get_detail.info("begin url get request for {}".format(url))
-    result = session.get(url)
+    result = session.get(url, timeout=30)
     logger_to_get_detail.info("url get request completed")
     encoding = result.encoding
     page_text = result.text
@@ -217,31 +220,31 @@ def test():
     return tree
 
 
-def generate_bidding_list_from_message(msg):
+def generate_bidding_list_from_message(msg, http_session):
     page = re.sub(".*:page-number|,|:timestamp.*", "", str(msg)).strip()
     url_template = "http://invest.ppdai.com/loan/listnew?LoanCategoryId=4&SortType=2&PageIndex={}&MinAmount=0&MaxAmount=0"
     url = url_template.format(page)
     print(url)
     logger_to_bidding_list.info(url)
-    return_msg = get_bidding_list_after_loggin(s, url)
+    return_msg = get_bidding_list_after_loggin(http_session, url)
     if return_msg == []:
         return []
     else:
         return return_msg
 
 
-def generate_bidding_detail_from_message(msg):
+def generate_bidding_detail_from_message(msg, http_session):
     json_msg = json.loads(str(msg, encoding='UTF-8'))
     bidding_id = json_msg["bidding_id"]
     print("processing bidding id of {}".format(bidding_id))
-    return get_bidding_details(s,bidding_id)
+    return get_bidding_details(http_session,bidding_id)
 
-def consume_queue(source_queue, target_queue,convert_function,sleep_time):
+def consume_queue(source_queue, target_queue,convert_function,sleep_time, http_session):
     def callback(ch, method, properties, body):
         print("get message from queue of {}, and distribute message to queue of {}".format(source_queue,target_queue))
         print(" [x] Received %r" % body)
         try:
-            msg = convert_function(body)
+            msg = convert_function(body, http_session)
             ch.basic_publish("pp",target_queue,json.dumps(msg))
         except Exception as e:
             print("Error from {} to {}:---------------------------------------".format(source_queue,target_queue))
@@ -421,46 +424,54 @@ def get_message_from_broadcast_exchange(driver):
     channel = connection.channel()
     user_name = getpass.getuser()
     host_name = socket.gethostname()
-    result = channel.queue_declare(queue='broadcast-{}-{}'.format(host_name,user_name), durable=False, auto_delete=False)
+    queue_name = 'broadcast-{}-{}'.format(host_name,user_name)
+    result = channel.queue_declare(queue=queue_name, exclusive = False , auto_delete=True)
+    print("resut for queue creation is:".format(result))
     channel.basic_qos(prefetch_count=1)
-    queue_name = result.method.queue
     print("queue of {} was declared".format(queue_name))
-    channel.queue_bind(queue=queue_name,
-                       exchange='pp-broadcast')
+    result = channel.queue_bind(queue=queue_name,
+                       exchange='pp-broadcast',
+                       routing_key = None)
+    print("resut for queue bidding is:".format(result))
+    print("bidding is done ....................................")
     channel.basic_consume(callback,
                           queue=queue_name,
                           no_ack=False)
     try:
         channel.start_consuming()
-    except KeyboardInterrupt:
-        channel.stop_consuming()
-    connection.close()
+    except Exception:
+        connection.close()
 
 
 def start_tasks(driver):
-    load_cookie_to_requests(s, file)
-    # t1 = Process(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
-    # t2 = Process(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
-    t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
-    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
-    t1.start()
-    t2.start()
+    load_cookie_to_requests(http_session1, file)
+    load_cookie_to_requests(http_session2, file)
     if start_firefox:
         print("listening on broadcast queue")
-        get_message_from_broadcast_exchange(driver)
+        # get_message_from_broadcast_exchange(driver)
+        t0 = Process(target=get_message_from_broadcast_exchange,args= (driver,))
+        t0.start()
+        print("process started")
+    # t1 = Process(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3))
+    # t2 = Process(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0))
+    t1 = threading.Thread(target=consume_queue, args=("middle", "middle_no_detail", generate_bidding_list_from_message,3, http_session1))
+    t2 = threading.Thread(target=consume_queue, args=("middle_no_detail_no_duplication", "middle_with_detail", generate_bidding_detail_from_message,0, http_session2))
+    t1.start()
+    t2.start()
+    print("jobs all started...")
 
 
-def get_cookies_file_with_max_amount():
+def get_cookies_file_with_max_amount(http_session):
     if len(get_dump_files_list()) > 0:
-        return sorted([test_dump(x) for x in get_dump_files_list()])[-1][-1]
+        return sorted([test_dump(http_session ,x) for x in get_dump_files_list()])[-1][-1]
     else:
         dump_cookie()
-        return get_cookies_file_with_max_amount()
+        return get_cookies_file_with_max_amount(http_session)
 
 
-file = get_cookies_file_with_max_amount()
-print(file)
 driver = None
+file = get_cookies_file_with_max_amount(http_session1)
+print(file)
 if start_firefox:
     driver = load_cookie_to_webdriver(file)
 start_tasks(driver)
