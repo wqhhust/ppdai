@@ -103,7 +103,10 @@ def test_dump(http_session,file):
 
 
 def load_cookie_to_webdriver(file):
-    driver = webdriver.Firefox()
+    fp = webdriver.FirefoxProfile()
+    fp.set_preference("http.response.timeout", 1)
+    fp.set_preference("dom.max_script_run_time", 20)
+    driver = webdriver.Firefox(firefox_profile=fp)
     driver.get(ppdai_url)
     cookies = pickle.load(open(file,'rb'))
     for cookie in cookies:
