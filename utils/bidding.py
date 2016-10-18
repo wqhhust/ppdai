@@ -350,11 +350,22 @@ def do_bidding(driver,bidding_id,amount):
     url = "http://invest.ppdai.com/loan/info?id={}".format(bidding_id)
     driver.set_page_load_timeout(10)
     logger_to_broadcast.info("start bidding for {}".format(bidding_id))
-    try:
-        driver.get(url)
-    except Exception:
-        logger_to_broadcast.info("getting page content time out, stop loading the page")
-        driver.send_keys(Keys.CONTROL +'Escape')
+    def try_get(url):
+        try:
+            driver.get(url)
+            return true
+        except Exception:
+            logger_to_broadcast.info("getting page content time out, stop loading the page and re-load the page")
+            return false
+
+    for _ in range(4):
+        get_result = try_get(url)
+        if get_result:
+            break
+    if get_result == False:
+        logger_to_broadcast.info("tried to reload the page several times, give up")
+        raise RuntimeError("already tried many times of loading the page, give up")
+
     logger_to_broadcast.info("got the page for bidding of {}".format(bidding_id))
     try:
         driver.find_element_by_class_name('expquickbid')
