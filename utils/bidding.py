@@ -427,7 +427,9 @@ def get_message_from_broadcast_exchange(driver):
             cursor.execute(sql)
             amount = cursor.fetchone()[0]
             print("********************")
-            print("the suggested amount is:{}".format(amount))
+            msg = "the suggested amount is:{}".format(amount)
+            logger_to_broadcast.info(msg)
+            print(msg)
             sql = "select * from bidding_history where bidding_id={}".format(bidding_id)
             cursor.execute(sql)
             print(cursor.fetchone())
