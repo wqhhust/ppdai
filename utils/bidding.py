@@ -353,10 +353,10 @@ def do_bidding(driver,bidding_id,amount):
     def try_get(url):
         try:
             driver.get(url)
-            return true
+            return True
         except Exception:
             logger_to_broadcast.info("getting page content time out, stop loading the page and re-load the page")
-            return false
+            return False
 
     for _ in range(4):
         get_result = try_get(url)
@@ -417,7 +417,7 @@ def get_message_from_broadcast_exchange(driver):
         placeholder = ", ".join(["?"] * len(json_msg_remove_empty_value))
         stmt = "insert into bidding_history ({columns}) values ({values});"\
             .format(columns=",".join(json_msg_remove_empty_value.keys()),values=placeholder)
-        logger_to_broadcast.info(stmt)
+        # logger_to_broadcast.info(stmt)
         values = list(json_msg_remove_empty_value.values())
         cursor.execute(stmt, values)
         # if sex information is not available, that means the bidding is completed
