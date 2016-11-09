@@ -348,7 +348,7 @@ def prepare_db():
 
 def do_bidding(driver,bidding_id,amount):
     url = "http://invest.ppdai.com/loan/info?id={}".format(bidding_id)
-    driver.set_page_load_timeout(10)
+    driver.set_page_load_timeout(30)
     logger_to_broadcast.info("start bidding for {}".format(bidding_id))
     def try_get(url):
         try:
@@ -521,6 +521,6 @@ def loop_run_periodically(minutes):
                 break
         print("The is_alive of the process is:".format(p1.is_alive()))
 
-loop_run_periodically(2)
+loop_run_periodically(120)
 
 # driver = dump_cookie()
