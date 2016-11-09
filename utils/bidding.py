@@ -514,10 +514,12 @@ def loop_run_periodically(minutes):
         p1.terminate()
         while True:
             print("killed the process, current status is {} waiting to exit....".format(p1.is_alive()))
+            print("killed the process, current status is {} waiting to exit....".format(p1.is_alive()))
+            print("killed the process, current status is {} waiting to exit....".format(p1.is_alive()))
             time.sleep(1)
             if not p1.is_alive():
                 break
-        print("The is_alive of the process is:".format(p.is_alive()))
+        print("The is_alive of the process is:".format(p1.is_alive()))
 
 loop_run_periodically(2)
 
