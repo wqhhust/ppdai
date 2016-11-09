@@ -521,6 +521,11 @@ def loop_run_periodically(minutes):
                 break
         print("The is_alive of the process is:".format(p1.is_alive()))
 
-loop_run_periodically(120)
+def run_once():
+    driver,file = get_file_and_driver()
+    start_tasks(driver,file)
+
+run_once()
+# loop_run_periodically(120)
 
 # driver = dump_cookie()
