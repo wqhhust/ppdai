@@ -494,17 +494,21 @@ def get_cookies_file_with_max_amount(http_session):
         dump_cookie()
         return get_cookies_file_with_max_amount(http_session)
 
-def run_ppadi():
+
+def get_file_and_driver():
     driver = None
     file = get_cookies_file_with_max_amount(http_session1)
     print(file)
     if start_firefox:
         driver = load_cookie_to_webdriver(file)
-    start_tasks(driver, file)
+    # start_tasks(driver, file)
+    return driver,file
+
 
 def loop_run_periodically(minutes):
+    driver,file = get_file_and_driver()
     while True:
-        p1 = Process(target = run_ppadi)
+        p1 = Process(target = start_tasks, args = (driver,file))
         p1.start()
         time.sleep(60 * minutes)
         p1.terminate()
@@ -513,7 +517,7 @@ def loop_run_periodically(minutes):
             time.sleep(1)
             if not p1.is_alive():
                 break
-        print("The is_alive of the process is:".format(p1.is_alive()))
+        print("The is_alive of the process is:".format(p.is_alive()))
 
 loop_run_periodically(2)
 
