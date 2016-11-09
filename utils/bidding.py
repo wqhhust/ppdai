@@ -469,7 +469,7 @@ def get_message_from_broadcast_exchange(driver):
         connection.close()
 
 
-def start_tasks(driver):
+def start_tasks(driver,file):
     load_cookie_to_requests(http_session1, file)
     load_cookie_to_requests(http_session2, file)
     if start_firefox:
@@ -494,18 +494,27 @@ def get_cookies_file_with_max_amount(http_session):
         dump_cookie()
         return get_cookies_file_with_max_amount(http_session)
 
+def run_ppadi():
+    driver = None
+    file = get_cookies_file_with_max_amount(http_session1)
+    print(file)
+    if start_firefox:
+        driver = load_cookie_to_webdriver(file)
+    start_tasks(driver, file)
 
-driver = None
-file = get_cookies_file_with_max_amount(http_session1)
-print(file)
-if start_firefox:
-    driver = load_cookie_to_webdriver(file)
-start_tasks(driver)
+def loop_run_periodically(minutes):
+    while True:
+        p1 = Process(target = run_ppadi)
+        p1.start()
+        time.sleep(60 * minutes)
+        p1.terminate()
+        while True:
+            print("killed the process, current status is {} waiting to exit....".format(p1.is_alive()))
+            time.sleep(1)
+            if not p1.is_alive():
+                break
+        print("The is_alive of the process is:".format(p1.is_alive()))
 
-
-#do_bidding(driver,21425176,50)
-# select * from (select * from rabbitmq_bidding_history order by created_time desc limit 500) x where school is not null
-#  (select * from rabbitmq_bidding_history order by created_time desc limit 500) 
-
+loop_run_periodically(2)
 
 # driver = dump_cookie()
