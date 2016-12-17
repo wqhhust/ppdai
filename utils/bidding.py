@@ -41,6 +41,9 @@ def normalize_str(s):
 def make_map(keys,values):
     return dict(zip(keys,values))
 
+def find_element_by_class(node,tag,className):
+    return node.findall('.//{}[@class="{}"]'.format(tag,className))
+
 def get_logger(file):
     # create logger with 'spam_application'
     logger = logging.getLogger(file)
@@ -165,16 +168,10 @@ def get_bidding_details(session,bidding_id):
     a = tree.findall('.//td[@class="inn"]')
     first_table = tree.find('.//table[@class="lendDetailTab_tabContent_table1"]')
     table_text = [None]*7
-    print(1111)
     spans_result = []
     spans_text = ""
-    if first_table is not None:
-        print("get info for first table")
-        spans_list = [x.findall('.//span')for x in first_table.findall('.//td[@class="inn"]')]
-        for spans in spans_list:
-            spans_result = spans_result + spans
-        spans_text = [x.text.split("：") for x in spans_result]
-        print(spans_text)
+
+    def update_user(spans_text):
         for [k,v] in spans_text:
             if k == "文化程度":
                 final_dict.update({"education_level":v})
@@ -186,7 +183,23 @@ def get_bidding_details(session,bidding_id):
                 final_dict.update({"age":float(v)})
             if k == "性别":
                 final_dict.update({"sex":v})
+    if first_table is not None:
+        print("get info for first table")
+        spans_list = [x.findall('.//span')for x in first_table.findall('.//td[@class="inn"]')]
+        for spans in spans_list:
+            spans_result = spans_result + spans
+        spans_text = [x.text.split("：") for x in spans_result]
+        print(spans_text)
+        update_user(spans_text)
 
+    leader_info_list = find_element_by_class(tree,"div","lender-info")
+    if len(leader_info_list) > 0:
+        print(111)
+        temp1 = find_element_by_class(leader_info_list[0],"p","ex col-1")
+        key =[x.text.replace("：","").strip() for x in temp1]
+        value= [x.find('./span').text.replace("：","").strip() for x in temp1]
+        user_info = [[k,v] for k,v in zip(key,value)]
+        update_user(user_info)
     print(final_dict)
     n1 = tree.findall('.//div[@class="newLendDetailMoneyLeft"]')
     print(len(n1))
@@ -522,7 +535,7 @@ def get_file_and_driver():
 
 def create_session():
     driver,file = get_file_and_driver()
-    start_tasks(driver,file)
+    load_cookie_to_requests(http_session1, file)
     return http_session1
 
 def loop_run_periodically(minutes):
