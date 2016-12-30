@@ -268,8 +268,20 @@ def generate_bidding_list_from_message(msg, http_session):
 def generate_bidding_detail_from_message(msg, http_session):
     json_msg = json.loads(str(msg, encoding='UTF-8'))
     bidding_id = json_msg["bidding_id"]
+    bidding_id_list = bidding_id.split("=")
+    print("===============")
+    logger_to_get_detail.info("this bidding informaiton is {}".format(str(bidding_id)))
+    print(bidding_id)
+    if len(bidding_id_list) > 1:
+        bidding_id = bidding_id_list[1]
     print("processing bidding id of {}".format(bidding_id))
-    return get_bidding_details(http_session,bidding_id)
+    try:
+        data = get_bidding_details(http_session,bidding_id)
+        return data
+    except Exception as e:
+        logger_to_get_detail.warning("error when get details for bidding_id of {}".format(bidding_id))
+        logger_to_get_detail.exception(e)
+        return {"bidding_id":bidding_id}
 
 def consume_queue(source_queue, target_queue,convert_function,sleep_time, http_session):
     def callback(ch, method, properties, body):
@@ -398,8 +410,9 @@ def do_bidding(driver,bidding_id,amount):
     logger_to_broadcast.info("got the page for bidding of {}".format(bidding_id))
     try:
         driver.find_element_by_class_name('expquickbid')
-        print("bidding of {} is completed".format(bidding_id))
+        logger_to_broadcast.info("the bidding {} is complete".format(bidding_id))
     except NoSuchElementException:
+        logger_to_broadcast.info("the bidding is not complete, begin to bid....")
         total_element = driver.find_element_by_id('accountTotal')
         account_total = float(re.sub("¥|,","",total_element.text))
         bidding_left_element = driver.find_element_by_id('listRestMoney')
@@ -427,12 +440,11 @@ def do_bidding(driver,bidding_id,amount):
                 bidding_element.click()
                 time.sleep(0.5)
                 msg = "success after try {} times for bidding_id of {}".format(x+1, bidding_id)
-                print(msg)
                 logger_to_broadcast.info(msg)
             except Exception as e:
-                print("Error: when click")
-                print(e)
-                time.sleep(0.5)
+                logger_to_broadcast.exception(e)
+    except Exception as e:
+        logger_to_broadcast.exception(e)
     logger_to_broadcast.info("end bidding for {}".format(bidding_id))
 
 
@@ -458,7 +470,8 @@ def get_message_from_broadcast_exchange(driver):
             result = cursor.fetchone()
             amount = result[0]
             msg = "the suggested amount is:{}, bidding is {} ".format(amount,str(result))
-            logger_to_need_bidding.info(msg)
+            if amount > 0:
+                logger_to_need_bidding.info(msg)
             sql = "select * from bidding_history where bidding_id={}".format(bidding_id)
             cursor.execute(sql)
             print(cursor.fetchone())
