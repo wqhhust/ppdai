@@ -16,7 +16,7 @@ from multiprocessing import Process
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
-
+from toolz import itertoolz
 import utils
 headers = {
 "User-Agent":
@@ -269,15 +269,13 @@ def generate_bidding_detail_from_message(msg, http_session):
     json_msg = json.loads(str(msg, encoding='UTF-8'))
     bidding_id = json_msg["bidding_id"]
     ppdai_level = json_msg.get("ppdai_level",'Not-AA')
-    bidding_id_list = bidding_id.split("=")
+    bidding_id = itertoolz.last(bidding_id.split("="))
     print("===============")
     print(ppdai_level)
     if ppdai_level == 'AA':
         return {"bidding_id":bidding_id}
     logger_to_get_detail.info("this bidding informaiton is {}".format(str(bidding_id)))
     print(bidding_id)
-    if len(bidding_id_list) > 1:
-        bidding_id = bidding_id_list[1]
     print("processing bidding id of {}".format(bidding_id))
     try:
         data = get_bidding_details(http_session,bidding_id)
@@ -470,8 +468,12 @@ def get_message_from_broadcast_exchange(driver):
         # if json_msg_remove_empty_value.get("sex",0) !=1:
         if True:
             sql = "select {} suggested_amount,a.* from bidding_history a where bidding_id={}".format(bidding_sql,bidding_id)
-            cursor.execute(sql)
-            result = cursor.fetchone()
+            try:
+                cursor.execute(sql)
+                result = cursor.fetchone()
+            except Exception as e:
+                logger_to_broadcast.exception(e)
+                raise Exception(sql)
             amount = result[0]
             msg = "the suggested amount is:{}, bidding is {} ".format(amount,str(result))
             if amount > 0:
