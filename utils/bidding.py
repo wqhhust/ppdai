@@ -268,8 +268,12 @@ def generate_bidding_list_from_message(msg, http_session):
 def generate_bidding_detail_from_message(msg, http_session):
     json_msg = json.loads(str(msg, encoding='UTF-8'))
     bidding_id = json_msg["bidding_id"]
+    ppdai_level = json_msg.get("ppdai_level",'Not-AA')
     bidding_id_list = bidding_id.split("=")
     print("===============")
+    print(ppdai_level)
+    if ppdai_level == 'AA':
+        return {"bidding_id":bidding_id}
     logger_to_get_detail.info("this bidding informaiton is {}".format(str(bidding_id)))
     print(bidding_id)
     if len(bidding_id_list) > 1:
@@ -507,7 +511,8 @@ def get_message_from_broadcast_exchange(driver):
                           no_ack=False)
     try:
         channel.start_consuming()
-    except Exception:
+    except Exception as e:
+        logger_to_broadcast.exception(e)
         connection.close()
 
 
