@@ -122,7 +122,11 @@ def load_cookie_to_webdriver(file):
     driver.get(ppdai_url)
     cookies = pickle.load(open(file,'rb'))
     for cookie in cookies:
-        driver.add_cookie(cookie)
+        try:
+            driver.add_cookie(cookie)
+        except Exception as e:
+            print("Failed to load the following cookie:")
+            print(cookie)
     return driver
 
 
@@ -274,6 +278,7 @@ def generate_bidding_detail_from_message(msg, http_session):
     print(ppdai_level)
     if ppdai_level == 'AA':
         return {"bidding_id":bidding_id}
+        pass
     logger_to_get_detail.info("this bidding informaiton is {}".format(str(bidding_id)))
     print(bidding_id)
     print("processing bidding id of {}".format(bidding_id))
@@ -466,6 +471,8 @@ def get_message_from_broadcast_exchange(driver):
         # if sex information is not available, that means the bidding is completed
         print("=====the messge from broadcast queue is: {}".format(str(json_msg_remove_empty_value)))
         # if json_msg_remove_empty_value.get("sex",0) !=1:
+        if len(json_msg_remove_empty_value) == 1:
+            logger_to_broadcast.info("ignore this message, since it's not complete: {}".format(json_msg_remove_empty_value))
         if True:
             sql = "select {} suggested_amount,a.* from bidding_history a where bidding_id={}".format(bidding_sql,bidding_id)
             try:
