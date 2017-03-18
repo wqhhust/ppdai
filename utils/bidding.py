@@ -7,6 +7,7 @@ import glob
 import requests
 import pika
 import json
+from datetime import datetime
 import re
 import socket
 import getpass
@@ -490,11 +491,17 @@ def get_message_from_broadcast_exchange(driver):
             print(cursor.fetchone())
             print("********************")
             if amount>0:
+                logger_to_need_bidding("begin the bidding...")
+                start_time = datetime.now()
                 try:
                     do_bidding(driver, bidding_id, amount)
                 except Exception as e:
                     print("Error: error when run do_bidding")
                     print(e)
+                end_time = datetime.now()
+                elapse_time = end_time - start_time
+                elapsed_second = elapse_time.total_seconds()
+                logger_to_need_bidding("end the bidding..., used seconds is {}".format(elapsed_second))
 
         else:
             print("bidding of {} is completed".format(bidding_id))
