@@ -491,7 +491,7 @@ def get_message_from_broadcast_exchange(driver):
             print(cursor.fetchone())
             print("********************")
             if amount>0:
-                logger_to_need_bidding("begin the bidding...")
+                logger_to_need_bidding.info("begin the bidding...")
                 start_time = datetime.now()
                 try:
                     do_bidding(driver, bidding_id, amount)
