@@ -501,7 +501,7 @@ def get_message_from_broadcast_exchange(driver):
                 end_time = datetime.now()
                 elapse_time = end_time - start_time
                 elapsed_second = elapse_time.total_seconds()
-                logger_to_need_bidding("end the bidding..., used seconds is {}".format(elapsed_second))
+                logger_to_need_bidding.info("end the bidding..., used seconds is {}".format(elapsed_second))
 
         else:
             print("bidding of {} is completed".format(bidding_id))
